@@ -1,0 +1,61 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./backend-solution/docker/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U postgres -d product_db" ]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - backend-network
+
+  product-service:
+    build:
+      context: ./backend-solution
+      dockerfile: product-service/Dockerfile
+    container_name: product-service
+    restart: on-failure
+    ports:
+      - "8080:8080"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/product_db
+      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_DATASOURCE_PASSWORD: password
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - backend-network
+
+  inventory-service:
+    build:
+      context: ./backend-solution
+      dockerfile: inventory-service/Dockerfile
+    container_name: inventory-service
+    restart: on-failure
+    ports:
+      - "8081:8081"
+    environment:
+      PRODUCT_SERVICE_URL: http://product-service:8080
+      APP_SECURITY_API_KEY: my-secret-api-key
+    depends_on:
+      - product-service
+    networks:
+      - backend-network
+
+volumes:
+  postgres_data:
+
+
+networks:
+  backend-network:
+    driver: bridge

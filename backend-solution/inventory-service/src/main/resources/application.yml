@@ -1,0 +1,51 @@
+server:
+  port: 8081
+
+spring:
+  application:
+    name: inventory-service
+  datasource:
+    url: jdbc:postgresql://postgres:5432/inventory_db
+    username: postgres
+    password: password
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    hibernate:
+      ddl-auto: update
+    database-platform: org.hibernate.dialect.PostgreSQLDialect
+    show-sql: true
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: always
+
+app:
+  security:
+    api-key: my-secret-api-key
+
+product:
+  service:
+    url: http://product-service:8080
+
+resilience4j:
+  circuitbreaker:
+    instances:
+      productService:
+        registerHealthIndicator: true
+        slidingWindowSize: 10
+        minimumNumberOfCalls: 5
+        permittedNumberOfCallsInHalfOpenState: 3
+        automaticTransitionFromOpenToHalfOpenEnabled: true
+        waitDurationInOpenState: 5s
+        failureRateThreshold: 50
+        eventConsumerBufferSize: 10
+  retry:
+    instances:
+      productService:
+        maxAttempts: 3
+        waitDuration: 1s
